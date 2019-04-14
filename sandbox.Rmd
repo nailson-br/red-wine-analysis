@@ -1,0 +1,21 @@
+---
+title: "sandobox"
+author: "Nailson"
+date: "13 de abril de 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+# setwd('/home/nailson/Documentos/dev/Udacity/NanodegreeDS/modulo 5/exercicios/projetoFinal')
+
+setwd('.')
+
+vinhos_sandbox <- read.csv('wineQualityReds.csv', sep = ',')
+str(vinhos_sandbox)
+
+# renomeando as variáveis
+novos_nomes <- c('id', 'acidez_fixa', 'acidez_volatil', 'acidez_citrica', 'acucar_residual', 'cloretos', 'dioxido_de_enxofre_livre', 'dioxido_de_enxofre_total', 'densidade', 'pH', 'sulfatos','alcool', 'qualidade')
+names(vinhos_sandbox) <- novos_nomes
+```
+
