@@ -1,5 +1,9 @@
 ---
-output: html_document
+output:
+    html_document:
+        toc: true
+        toc_depth: 3
+        toc_float: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -28,6 +32,7 @@ vinhos <- read.csv('wineQualityReds.csv', sep = ',')
 ```
 
 # Seção de Gráficos Univariados
+Inicialmente serão plotados os gráficos das variáveis do dataset para que possam ser avaliados.
 ```{r echo=FALSE, Univariate_Plots}
 p1 <- ggplot(aes(x = fixed.acidity), data = vinhos) +
     geom_histogram(binwidth = 0.2, color = 'black', fill = '#099DD9')
@@ -67,16 +72,19 @@ p12 <- ggplot(aes(x = quality), data = vinhos) +
 
 grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, ncol = 3)
 ```
+
 Avaliando os gráficos gerados pode-se perceber que as variáveis **density** e **pH** têm distribuição normal.
 
 Em contrapartida, **fixed.acidity**, **volatile.acidity**, **residual.sugar**, **chlorides**, **free.sulfur.dioxide**, **total.sulfur.dioxide** e **sulphates** têm cauda longa.
-```{r}
+
+Para uma melhor análise dos itens que não estão apresentando uma variação normal, será aplicada uma transformação logarítmica para verificar se são casos de **variação log-normal**.
+```{r echo=FALSE, warning=FALSE, message=FALSE}
 p1 <- ggplot(aes(x = fixed.acidity), data = vinhos) +
-    geom_histogram(binwidth = 0.02, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10(breaks = seq(0, 20, 1))
 
 p2 <- ggplot(aes(x = volatile.acidity), data = vinhos) +
-    geom_histogram(binwidth = 0.05, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10(breaks = seq(0.1, 1.5, 0.2))
 
 p4 <- ggplot(aes(x = residual.sugar), data = vinhos) +
@@ -84,30 +92,392 @@ p4 <- ggplot(aes(x = residual.sugar), data = vinhos) +
     scale_x_log10()
 
 p5 <- ggplot(aes(x = chlorides), data = vinhos) +
-    geom_histogram(binwidth = 0.05, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10()
 
 p6 <- ggplot(aes(x = free.sulfur.dioxide), data = vinhos) +
-    geom_histogram(binwidth = .05, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10()
 
 p7 <- ggplot(aes(x = total.sulfur.dioxide), data = vinhos) +
-    geom_histogram(binwidth = 0.04, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10(breaks = seq(0, 150, 20))
 
 p10 <- ggplot(aes(x = sulphates), data = vinhos) +
-    geom_histogram(binwidth = 0.02, color = 'black', fill = '#099DD9') +
+    geom_histogram(color = 'black', fill = '#099DD9') +
     scale_x_log10(breaks = seq(0.1, 2, 0.2))
 
 grid.arrange(p1, p2, p4, p5, p6, p7, p10, ncol = 1)
 
 ```
 
+Aplicando a transformação logarítmica, observamos que **residual.sugar**, **chlorides** e **sulphates** estão com distribuição log-normal, apesar de serem *long tail*.
+
+As outras variáveis apresentam uma distribuição próximas da log-normal.
+
+### Variável dependente
+A variável **quality** será utilizada como variável dependente. O estudo será feito a partir de outras variáveis que serão analisadas com relação à **quality**.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(aes(x = quality), data = vinhos) +
+    geom_histogram(binwidth = 1, color = 'black', fill = '#099DD9') +
+    xlab('Qualidade dos vinhos tinto') +
+    ylab('quantidade') +
+    ggtitle('Qualidade')
+summary(vinhos$quality)
+```
+
+### Criando uma classificação baseada na qualidade dos vinhos
+Dado que a variável *quality* apresenta apenas números inteiros, ou seja, não teremos vinhos classificados com qualidade 6.8, por exemplo, serão criadas **categorias** de classificação de vinhos.
+
+Os vinhos estão classificados em uma escala de 0 a 10, sendo 0 a pior classificação de qualidade e 10 a melhor.
+
+No dataset estudado, a maioria dos vinhos estão classificados com qualidade 5 e 6. A pior qualidade observada foi 3 e a melhor foi 8.
+
+Desse modo, os vinhos serão *categorizados* em:
+
+1. **ruim** -> vinhos com notas de 0 a 4
+2. **bom** -> vinhos com notas de 5 a 7
+3. **excelente** -> vinhos com notas de 8 a 10
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Criando os grupos de qualidade
+# quality.group <- c(0, 2, 4, 6, 8, 10)
+category <- c(0, 5, 8, 10)
+
+# Criando rótulos para os intervalos
+# group <- c('Pessimo', 'Ruim', 'Mediano', 'Bom', 'Otimo')
+group <- c('ruim', 'bom', 'excelente')
+
+# Classificando os vinhos de acordo com os grupos criados
+vinhos$category <- cut(vinhos$quality, category, include.lowest = TRUE, right = FALSE, labels = group)
+
+p13 <- ggplot(aes(x = category), data = vinhos) +
+    geom_bar(color = 'black', fill = '#099DD9') +
+    xlab('Categorias dos vinhos tinto') +
+    ylab('quantidade') +
+    ggtitle('Categorias')
+
+p14 <- ggplot(aes(x = category, fill = factor(vinhos$quality)), data = vinhos) +
+    geom_bar(color = 'black') +
+    xlab('Categorias dos vinhos tinto') +
+    ylab('quantidade') +
+    scale_fill_discrete(name = 'qualidade', guide = guide_legend(reverse = TRUE)) +
+    ggtitle('Categorias e qualidade') +
+    theme(legend.position = 'bottom')
+
+grid.arrange(p13, p14, ncol = 1)
+```
+
+No gráfico **Categorias** temos a distribuição dos vinhos distribuídos nas categorias, **ruim**, **bom** e **excelente**.
+
+No gráfico **Categorias e qualidade** temos a mesma representação do gráfico anterior, mas com a exibição também das quantidades que aparecem em cada uma das categorias.
+
+### Variáveis independentes
+A seguir, as variáveis independentes serão analisadas com relação à variável dependente **quality**.
+
+#### Acidez Fixa - fixed.acidity
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = fixed.acidity), data = vinhos) +
+    geom_histogram(binwidth = 0.2, color = 'black', fill = '#099DD9') +
+    labs(x = 'Acidez Fixa (ácido tartárico - g / dm^3)', y = 'quantidade',
+          title = "Distribuição da Acidez Fixa")
+
+pb <- ggplot(aes(x = 1, y = fixed.acidity), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = fixed.acidity, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Acidez Fixa (ácido tartárico - g / dm^3)', x = '',
+          title = "Distribuição da Acidez Fixa") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$fixed.acidity)
+paste('Correlação da Acidez Fixa com a Qualidade: ', with(vinhos, cor(fixed.acidity, quality)))
+```
+
+A variável de **Acidez Fixa** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de 0,12 e é considerada baixa Portanto, **não será avaliada**.
+
+---
+
+#### Acidez Volátil - volatile.acidity
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = volatile.acidity), data = vinhos) +
+    geom_histogram(binwidth = 0.05, color = 'black', fill = '#099DD9') +
+    labs(x = 'Acidez Volátil (ácido acético - g / dm^3)', y = 'quantidade',
+          title = "Distribuição da Acidez Volátil")
+
+pb <- ggplot(aes(x = 1, y = volatile.acidity), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = volatile.acidity, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Acidez Volátil (ácido acético - g / dm^3)', x = '',
+          title = "Distribuição da Acidez Volátil") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$volatile.acidity)
+paste('Correlação da Acidez Volátil com a Qualidade: ', with(vinhos, cor(volatile.acidity, quality)))
+```
+
+A variável de **Acidez Volátil** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,39 e é considerada moderada. Portanto, **será avaliada**.
+
+---
+
+#### Ácido Cítrico - citric.acid
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = citric.acid), data = vinhos) +
+    geom_histogram(binwidth = 0.05, color = 'black', fill = '#099DD9') +
+    labs(x = 'Ácido Cítrico (g / dm^3)', y = 'quantidade',
+          title = "Distribuição de Ácido Cítrico")
+
+pb <- ggplot(aes(x = 1, y = citric.acid), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = citric.acid, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Ácido Cítrico (g / dm^3)', x = '',
+          title = "Distribuição de Ácido Cítrico") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$citric.acid)
+paste('Correlação de Ácido Cítrico com a Qualidade: ', with(vinhos, cor(citric.acid, quality)))
+```
+
+A variável de **Ácido Cítrico** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de 0,23 e é considerada moderada. Portanto, **será avaliada**.
+
+---
+
+#### Açúcar Residual - residual.sugar
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = residual.sugar), data = vinhos) +
+    geom_histogram(binwidth = 0.2, color = 'black', fill = '#099DD9') +
+    labs(x = 'Açúcar Residual (g / dm^3)', y = 'quantidade',
+          title = "Distribuição de Açúcar Residual")
+
+pb <- ggplot(aes(x = 1, y = residual.sugar), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = residual.sugar, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Açúcar Residual (g / dm^3)', x = '',
+          title = "Distribuição de Açúcar Residual") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$residual.sugar)
+paste('Correlação de Açúcar Residual com a Qualidade: ', with(vinhos, cor(residual.sugar, quality)))
+```
+
+A variável de **Açúcar Residual** tem distribuição log-normal, apesar de apresentar *long tail* e exceções.
+
+Sua correlação com a variável dependente **Qualidade** é de 0,01 e é considerada fraca. Portanto, **não será avaliada**.
+
+---
+
+#### Cloretos - chlorides
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = chlorides), data = vinhos) +
+    geom_histogram(binwidth = 0.01, color = 'black', fill = '#099DD9') +
+    labs(x = 'Cloretos (cloreto de sódio - g / dm^3)', y = 'quantidade',
+          title = "Distribuição de Cloretos")
+
+pb <- ggplot(aes(x = 1, y = chlorides), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = chlorides, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Cloretos (cloreto de sódio - g / dm^3)', x = '',
+          title = "Distribuição de Cloretos") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$chlorides)
+paste('Correlação de Cloretos com a Qualidade: ', with(vinhos, cor(chlorides, quality)))
+```
+
+A variável de **Cloretos** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,13 e é considerada fraca. Portanto, **não será avaliada**.
+
+---
+
+#### Dióxido de Enxofre Livres - free.sulfur.dioxide
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = free.sulfur.dioxide), data = vinhos) +
+    geom_histogram(binwidth = 1, color = 'black', fill = '#099DD9') +
+    labs(x = 'Dióxido de Enxofre Livres (mg / dm^3)', y = 'quantidade',
+          title = "Distribuição de Dióxido de Enxofre Livres")
+
+pb <- ggplot(aes(x = 1, y = free.sulfur.dioxide), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = free.sulfur.dioxide, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Dióxido de Enxofre Livres (mg / dm^3)', x = '',
+          title = "Distribuição de Dióxido de Enxofre Livres") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$free.sulfur.dioxide)
+paste('Correlação de Dióxido de Enxofre Livres com a Qualidade: ', with(vinhos, cor(free.sulfur.dioxide, quality)))
+```
+
+A variável de **Dióxido de Enxofre Livres** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,05 e é considerada fraca. Portanto, **não será avaliada**.
+
+---
+
+#### Dióxido de Enxofre Total - total.sulfur.dioxide
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = total.sulfur.dioxide), data = vinhos) +
+    geom_histogram(binwidth = 5, color = 'black', fill = '#099DD9') +
+    labs(x = 'Dióxido de Enxofre Total (mg / dm^3)', y = 'quantidade',
+          title = "Distribuição de Dióxido de Enxofre Total")
+
+pb <- ggplot(aes(x = 1, y = total.sulfur.dioxide), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = total.sulfur.dioxide, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Dióxido de Enxofre Total (mg / dm^3)', x = '',
+          title = "Distribuição de Dióxido de Enxofre Total") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$total.sulfur.dioxide)
+paste('Correlação de Dióxido de Enxofre Total com a Qualidade: ', with(vinhos, cor(total.sulfur.dioxide, quality)))
+```
+
+A variável de **Dióxido de Enxofre Total** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,18 e é considerada fraca. Portanto, **não será avaliada**.
+
+
+---
+
+#### Densidade - density
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = density), data = vinhos) +
+    geom_histogram(binwidth = 0.0005, color = 'black', fill = '#099DD9') +
+    labs(x = 'Densidade (g / cm^3)', y = 'quantidade',
+          title = "Distribuição de Densidade")
+
+pb <- ggplot(aes(x = 1, y = density), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = density, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Densidade (g / cm^3)', x = '',
+          title = "Distribuição de Densidade") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$density)
+paste('Correlação de Densidade com a Qualidade: ', with(vinhos, cor(density, quality)))
+```
+
+A variável de **Densidade** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,17 e é considerada fraca. Portanto, **não será avaliada**.
+
+
+---
+
+#### Potencial Hidrogeniônico - pH
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = pH), data = vinhos) +
+    geom_histogram(binwidth = 0.02, color = 'black', fill = '#099DD9') +
+    labs(x = '', y = 'quantidade',
+          title = "Distribuição de pH")
+
+pb <- ggplot(aes(x = 1, y = pH), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = pH, color = 'Orange'), alpha = 0.3) +
+    labs(y = '', x = '',
+          title = "Distribuição de pH") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$pH)
+paste('Correlação de pH com a Qualidade: ', with(vinhos, cor(pH, quality)))
+```
+
+A variável de **Potencial Hidrogeniônico** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de -0,06 e é considerada desprezível. Portanto, **não será avaliada**.
+
+
+---
+
+#### Sulfatos - sulphates
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = sulphates), data = vinhos) +
+    geom_histogram(binwidth = 0.05, color = 'black', fill = '#099DD9') +
+    labs(x = 'Sulfatos (sulfato de potássio - g / dm^3)', y = 'quantidade',
+          title = "Distribuição de Sulfatos")
+
+pb <- ggplot(aes(x = 1, y = sulphates), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = sulphates, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Sulfatos (sulfato de potássio - g / dm^3)', x = '',
+          title = "Distribuição de Sulfatos") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$sulphates)
+paste('Correlação de Sulfatos com a Qualidade: ', with(vinhos, cor(sulphates, quality)))
+```
+
+A variável de **Sulfatos** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de 0.25 e é considerada moderada. Portanto, **será avaliada**.
+
+---
+
+#### Álcool - alcohol
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+pa <- ggplot(aes(x = alcohol), data = vinhos) +
+    geom_histogram(binwidth = 0.2, color = 'black', fill = '#099DD9') +
+    labs(x = 'Álcool (% por volume)', y = 'quantidade',
+          title = "Distribuição de Álcool")
+
+pb <- ggplot(aes(x = 1, y = alcohol), data = vinhos) +
+    geom_boxplot(color = 'black') +
+    geom_jitter(aes(x = 1, y = alcohol, color = 'Orange'), alpha = 0.3) +
+    labs(y = 'Álcool (% por volume)', x = '',
+          title = "Distribuição de Álcool") +
+    theme(legend.position = 'none') +
+    coord_flip()
+
+grid.arrange(pa, pb, ncol = 1)
+
+summary(vinhos$alcohol)
+paste('Correlação de Álcool com a Qualidade: ', with(vinhos, cor(alcohol, quality)))
+```
+
+A variável de **Álcool** tem distribuição próxima de log-normal.
+
+Sua correlação com a variável dependente **Qualidade** é de 0.48 e é considerada moderada. Portanto, **será avaliada**.
 
 # Análise Univariada
 
 ### Qual é a estrutura do conjunto de dados?
-```{r}
+```{r echo=FALSE, warning=FALSE, message=FALSE}
 str(vinhos)
 ```
 Adicional ao que é exibido na função str(), de acordo com o arquivo *wineQualytiInfo.txt* obtido do repositório da Udacity no endereço https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt, o conjunto de dados tem a seguinte estrutura de variáveis:
@@ -134,86 +504,277 @@ Adicional ao que é exibido na função str(), de acordo com o arquivo *wineQual
 
 **QUALITY** é o atributo principal, pois ele define a qualidade do vinho baseado nos outros fatores.
 
-**ALCOHOL** porque o teor alcoólico também influencia no paladar;
-```{r}
+```{r echo=FALSE, warning=FALSE, message=FALSE}
 summary(vinhos$quality)
 summary(vinhos$alcohol)
 ```
 
-#### Analisando a distribuição das duas variáveis escolhidas como principais
-```{r}
-ggplot(aes(x = quality), data = vinhos) +
-    geom_histogram(color = 'black', fill = '#099DD9', binwidth = 1) +
-    scale_x_continuous(breaks = seq(0, 10, 1), limits = c(0, 10))
-
-ggplot(aes(x = alcohol), data = vinhos) +
-    geom_histogram(color = 'black', fill = '#099DD9', binwidth = 0.5) +
-    scale_x_continuous(breaks = seq(8, 15, 0.5), limits = c(8, 15))
-```
-
-#### Criando uma variável de categoria para agrupar qualidades de vinhos
-Dado que a variável *quality* apresenta apenas números inteiros, ou seja, não teremos vinhos classificados com qualidade 6.8, por exemplo, serão criados grupos de qualidade.
-
-1. **Péssimo** -> de 1 a 2
-2. **Ruim** -> de 3 a 4
-3. **Mediano** -> de 5 a 6
-4. **Bom** -> de 7 a 8
-5. **Ótimo** -> de 9 a 10
-
-```{r}
-# Criando os grupos de qualidade
-quality.group <- c(0, 2, 4, 6, 8, 10)
-
-# Criando rótulos para os intervalos
-group <- c('Pessimo', 'Ruim', 'Mediano', 'Bom', 'Otimo')
-
-# Classificando os vinhos de acordo com os grupos criados
-vinhos$class <- cut(vinhos$quality, quality.group, include.lowest = TRUE, right = FALSE, labels = group)
-```
-
-
 ### Quais outros atributos você acha que podem lhe auxiliar na investigação destes atributos de interesse?
 
-**DENSITY** porque pode refletir diretamente na sensação ao degustar o produto;
+#### Correlação das variáveis independentes da variável dependente **quality**
+ variável             | correlação |
+----------------------|------------|
+fixed.acidity         |        0.12|
+volatile.acidity      |       -0.39|
+citric.acid           |        0.23|
+residual.sugar        |        0.01|
+chlorides             |       -0.13|
+free.sulfur.dioxide   |       -0.05|
+total.sulfulr.dioxide |       -0.19|
+density               |       -0.17|
+pH                    |       -0.06|
+sulphates             |        0.25|
+alcohol               |        0.48|
+  
+De acordo com a tabela acima, não temos nenhuma variável com uma correlação forte.
 
-**PH** porque indica o nível de acidez sentido pelo apreciador do vinho;
-```{r}
-summary(vinhos$density)
-summary(vinhos$pH)
-```
+Com base nos valores de correlação obtidos, os atributos que podem auxiliar a investigação são:
+
+1. **ALCOHOL**
+2. **VOLATILE.ACIDITY**
+3. **SULPHATES**
+4. **CITRIC.ACID**
+
 
 ### Você criou novas variáveis a partir dos atributos existentes no conjunto de dados?
-Foi criada a variável **class**, conforme descrito acima para classificar os vinhos em péssimos, ruins, medianos, bons e ótimos.
+Foi criada a variável **category**, conforme descrito acima para classificar os vinhos em ruins, bons e excelentes.
 
 ### Dos atributos investigados, distribuições incomuns foram encontradas? Você aplicou operações nos dados para limpá-los, ajustá-los ou mudar a forma dos dados? Se sim, por quê?
+Foram encontradas duas variáveis com distribuição normal:
+
+* quality
+* density
+* pH
+
+As variáveis a seguir têm distribuição log-normal (apesar de long tail)
+
+* residual.sugar
+* chlorides
+* sulphates
+
+As variáveis restantes têm distribuição próximas a log-normal
+
+* fixed.acidity
+* volatile.acidity
+* citric.acid
+* free.sulfur.dioxide
+* total.sulfur.dioxide
+* alcohol
+
+Não houve necessidade de ajustes ou formatação dos dados, por serem todos numéricos.
 
 # Seção de Gráficos Bivariados
+Análise das quatro variáveis com maior correlação com a variável **quality**.
 ```{r echo=FALSE, Bivariate_Plots}
+plot1 <- ggplot(aes(x = factor(vinhos$quality, ordered = T), y = alcohol, fill = category), data = vinhos) +
+    geom_boxplot() +
+    ggtitle('Percentual de Álcool nas\ndiferentes Qualidades de Vinho') +
+    xlab('qualidade') +
+    ylab('Álcool (% por volume)') +
+    guides(fill = guide_legend(reverse = TRUE))
 
+plot2 <- ggplot(aes(x = factor(vinhos$quality, ordered = T), y = volatile.acidity, fill = category), data = vinhos) +
+    geom_boxplot() +
+    ggtitle('Acidez Volátil nas\ndiferentes Qualidades de Vinho') +
+    xlab('qualidade') +
+    ylab('Acidez Volátil (ácido acético - g / dm^3)') +
+    guides(fill = guide_legend(reverse = TRUE))
+
+plot3 <- ggplot(aes(x = factor(vinhos$quality, ordered = T), y = sulphates, fill = category), data = vinhos) +
+    geom_boxplot() +
+    ggtitle('Sulfatos nas\ndiferentes Qualidades de Vinho') +
+    xlab('qualidade') +
+    ylab('Sulfatos (sulfato de potássio - g / dm^3)') +
+    guides(fill = guide_legend(reverse = TRUE))
+
+plot4 <- ggplot(aes(x = factor(vinhos$quality, ordered = T), y = citric.acid, fill = category), data = vinhos) +
+    geom_boxplot() +
+    ggtitle('Ácido Cítrico nas\ndiferentes Qualidades de Vinho') +
+    xlab('qualidade') +
+    ylab('Ácido Cítrico (g / dm^3)') +
+    guides(fill = guide_legend(reverse = TRUE))
+
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 ```
+
+#### Influência dos componentes na qualidade dos vinhos
+**Álcool** - melhores qualidades de vinhos observadas quando o teor alcoólico é mais alto, acima de 10% do volume.
+
+Entretanto, há uma inversão com vinhos categorizados como bons, porém com qualidade 5. Vinhos com qualidade inferior (3 e 4) possuem teores alcoólicos acima.
+
+---
+
+#### **Acidez Volátil** - a quantidade apresentada desse componente é inversamente proporcional à qualidade. Vinhos com presença de ácido acético abaixo de 0.6 g/dm^3 são de melhor qualidade.
+
+---
+
+#### **Sulfatos** - índices maiores de presença de sulfato de potássio melhoram a qualidade do vinho. Valores acima de 0.6 g/dm^3 já estão presentes nas categorias dos vinhos bons.
+
+---
+
+#### **Ácido Cítrico** - semelhante ao sulfato de potássio, maiores índices dessa substância são encontradas em vinhos bons, em geral, valores acima de 0.25 g/dm^3.
+
+---
+
+#### Analisando outras correlações com os itens tidos como *não de interesse*
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Criando um novo dataset apenas com as variáveis não analisadas
+vinhos_subset = subset(vinhos, select = c(fixed.acidity, residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, density, pH))
+
+# Plotando a matriz de correlação
+ggpairs(vinhos_subset,
+        lower = list(continuous = wrap('points', shape = I('.')))) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.border = element_rect(linetype = "dashed",
+                                    colour = "black", fill = NA)) +
+    labs(title = 'Matriz de correlação')
+```
+
+
+
 
 # Análise Bivariada
 
 ### Discuta sobre alguns dos relacionamentos observados nesta parte da investigação. Como os atributos de interesse variaram no conjunto de dados?
+Conforme observado na seção **Influência dos componentes na qualidade dos vinhos**, melhores vinhos têm:
+
+* Mais altos teores alcoólicos
+* Menores índices de acidez volátil
+* Maiores índices de sulfatos
+* Maiores índices de ácido cítrico
 
 ### Você observou algum relacionamento interessante entre os outros atributos (os que não são de interesse)?
 
+Dos atributos que não foram selecionados para a análise, foram encontradas duas correlações fortes:
+
+* pH vs fixed.acidity -> correlação = -0.683
+* density vs pH -> correlação = 0.668
+
+Os atributos pH e fixed.acidity não parecem muito relevantes, porque os dois se relacionam com alcalinidade dos vinhos. Não há vinho tendendo a ser ácido. Todos são alcoólicos. O próprio fator pH tem correlação muito fraca com a qualidade, da ordem de -0.06.
+
 ### Qual foi o relacionamento mais forte encontrado?
+O maior correlacionamento encontrado entre os itens de interesse foi:
 
+* alcohol vs quality = 0.48
 
+O maior correlacionamento encontrado entre os itens de não interesse foi:
+
+* pH vs fixed.acidity = 0.68
 
 
 # Seção de Gráficos Multivariados
 
-```{r echo=FALSE, Multivariate_Plots}
+```{r echo=FALSE, warning=FALSE, message=FALSE, Multivariate_Plots}
+ggplot(aes(x = alcohol, y = volatile.acidity), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Álcool vs. Acidez Volátil') +
+    labs(x = bquote('(Álcool) correlação =' ~ 
+                        .(round(cor(vinhos$alcohol, vinhos$volatile.acidity),
+                                digits = 3))),
+         y = 'Acidez Volátil') +
+    # xlab(c("Álcool - ")) +
+    # ylab("Acidez Volátil") +
+    geom_smooth(method = 'lm', color = 'blue')
 
+# cor(vinhos$alcohol, vinhos$volatile.acidity)
+
+ggplot(aes(x = alcohol, y = sulphates), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Álcool vs. Sulfatos') +
+    labs(x = bquote('(Álcool) correlação =' ~ 
+                        .(round(cor(vinhos$alcohol, vinhos$sulphates),
+                                digits = 3))),
+         y = 'Sulfatos') +
+    # xlab("Álcool") +
+    # ylab("Sulfatos") +
+    geom_smooth(method = 'lm', color = 'blue')
+
+# cor(vinhos$alcohol, vinhos$sulphates)
+
+ggplot(aes(x = alcohol, y = citric.acid), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Álcool vs. Ácidos Cítricos') +
+    labs(x = bquote('(Álcool) correlação =' ~ 
+                        .(round(cor(vinhos$alcohol, vinhos$citric.acid),
+                                digits = 3))),
+         y = 'Ácidos Cítricos') +
+    # xlab("Álcool") +
+    # ylab("Ácidos Cítricos") +
+    geom_smooth(method = 'lm', color = 'blue')
+
+# cor(vinhos$alcohol, vinhos$citric.acid)
+
+ggplot(aes(x = volatile.acidity, y = sulphates), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Acidez Volátil vs. Sulfatos') +
+    labs(x = bquote('(Acidez Volátil) correlação =' ~ 
+                        .(round(cor(vinhos$volatile.acidity, vinhos$sulphates),
+                                digits = 3))),
+         y = 'Sulfatos') +
+    # xlab("Acidez Volátil") +
+    # ylab("Sulfatos") +
+    geom_smooth(method = 'lm', color = 'blue')
+
+# cor(vinhos$volatile.acidity, vinhos$sulphates)
+
+ggplot(aes(x = volatile.acidity, y = citric.acid), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Acidez Volátil vs. Ácidos Cítricos') +
+    labs(x = bquote('(Acidez Volátil) correlação =' ~ 
+                        .(round(cor(vinhos$volatile.acidity, vinhos$citric.acid),
+                                digits = 3))),
+         y = 'Ácidos Cítricos') +
+    # xlab("Acidez Volátil") +
+    # ylab("Ácidos Cítricos") +
+    geom_smooth(method = 'lm', color = 'blue')
+
+# cor(vinhos$volatile.acidity, vinhos$citric.acid)
+
+ggplot(aes(x = sulphates, y = citric.acid), data = vinhos) +
+    geom_point(aes(color = category)) + 
+    scale_fill_brewer(palette="Set1") +
+    ggtitle('Sulfatos vs. Ácidos Cítricos') +
+    labs(x = bquote('(Sulfatos) correlação =' ~ 
+                        .(round(cor(vinhos$sulphates, vinhos$citric.acid),
+                                digits = 3))),
+         y = 'Ácidos Cítricos') +
+    # xlab("Sulfatos") +
+    # ylab("Ácidos Cítricos") +
+    geom_smooth(method = 'lm', color = 'blue')
+
+# grid.arrange(mvplot1, mvplot2, mvplot3, mvplot4, mvplot5, mvplot6, ncol = 1)
+
+# cor(vinhos$sulphates, vinhos$citric.acid)
 ```
 
 # Análise Multivariada
 
 ### Discuta sobre os relacionamentos observados nesta parte da investigação. Quais atributos que fortaleceram os demais na observação das variáveis de interesse?
 
+* O percentual alcoólico é o índice que mais contribui com a qualidade de um vinho. Em geral, bons vinhos tem um teor alcoólico entre 9.5 e 14.
+* Sulfatos e ácidos cítricos também contribuem com a qualidade do vinho quando seus valores são mais altos.
+* A acidez volátil é prejudicial à qualidade do vinho, pois quanto menores os índices encontrados desse elemento, maior a qualidade do vinho.
+
 ### Interações surpreendentes e/ou interessantes foram encontradas entre os atributos?
+
+Calculando-se a correlação entre os fatores de interesse, também observou-se:
+
+* Três correlações significativas para vinhos de boa qualidade
+    + Acidez Volátil vs Sulfatos = -0.261
+        + Acidez Volátil entre 0.3 e 0.8
+        + Sulfatos entre 0.5 e 0.75
+    + Acidez Volátil vs Ácidos Cítricos = -0.552
+        + Acidez Volátil entre 0.3 e 0.8
+        + Ácidos Cítricos entre 0.0 e 0.5
+    + Sulfatos vs Ácidos Cítricos = 0.313
+        + Sulfatos entre 0.5 e 0.73
+        + Ácidos Cítricos entre 0 e 0.5
 
 ### OPCIONAL: Modelos foram criados usando este conjunto de dados? Discuta sobre os pontos fortes e as limitações do seu modelo.
 
@@ -223,29 +784,72 @@ Foi criada a variável **class**, conforme descrito acima para classificar os vi
 
 ### Primeiro Gráfico
 ```{r echo=FALSE, Plot_One}
-
+ggplot(aes(x = factor(vinhos$quality, ordered = T), y = alcohol, fill = category), data = vinhos) +
+    geom_boxplot() +
+    ggtitle('Percentual de Álcool nas diferentes Qualidades de Vinho') +
+    xlab('qualidade') +
+    ylab('Álcool (% por volume)') +
+    guides(fill = guide_legend(reverse = TRUE))
 ```
 
 ### Descrição do Primeiro Gráfico
-
+Mostrando a variação do fator mais importante, o teor alcoólico é o elemento que mais contribui na qualidade do vinho.
 
 ### Segundo Gráfico
 ```{r echo=FALSE, Plot_Two}
+ggplot(aes(x = citric.acid, y = volatile.acidity, color = as.factor(category)),
+       data = vinhos) +
+       geom_point() +
+       # scale_colour_manual(values = c("red", "green", "pink", "yellow",
+                                      # "orange", "blue"), name = "Quality") +
+       facet_wrap(~category) +
+       xlab('Ácido Cítrico (g/dm^3)') +
+       ylab('Acidez Volátil (g/dm^3)') +
+       ggtitle('Acidez Volátil , Ácido Cítrico & Categoria em Vinhos Tintos') +
+    scale_colour_discrete(name = 'categoria', guide = guide_legend(reverse = T))
 
 ```
 
 ### Descrição do Segundo Gráfico
+Bons vinhos também dependem dos índices de **Acidez Volátil** e **Ácido Cítrico** em sua composição para serem bem classificados.
 
+O gráfico acima mostra a distribuição desses compontentes nas categorias ruim, bom e excelente, às quais foram classificados os vinhos do dataset.
 
 ### Terceiro Gráfico
 ```{r echo=FALSE, Plot_Three}
-
+ggplot(aes(x = citric.acid, y = volatile.acidity, color = as.factor(quality)),
+       data = vinhos) +
+       geom_point() +
+       # scale_colour_manual(values = c("red", "green", "pink", "yellow",
+                                      # "orange", "blue"), name = "Quality") +
+       facet_wrap(~quality) +
+       xlab('Ácido Cítrico (g/dm^3)') +
+       ylab('Acidez Volátil (g/dm^3)') +
+       ggtitle('Acidez Volátil , Ácido Cítrico & Qualidade em Vinhos Tintos') +
+    scale_colour_discrete(name = 'qualidade', guide = guide_legend(reverse = T))
 ```
 
 ### Descrição do Terceiro Gráfico
-
+Uma visão um pouco mais detalhada que a do segundo gráfico, aqui vemos a distribuição da relação entre **Acidez Volátil** e **Ácido Cítrico** divididos na escala de qualidade dos vinhos.
 ------
 
 # Reflexão
+A análise do dataset de Qualidade de Vinhos Tintos começou com a avaliação das variáveis que foram plotadas em histogramas.
 
+Uma vez com a informação visual dos elementos, segui para a identificação da variável dependente, que foi facilmente anotada pela **quality**, que é uma nota dada para o vinho.
 
+Com a variável dependente já identificada, calculei as correlações entre as outras variáveis e selecionei as de correlação mais forte.
+
+Uma primeira dificuldade foi escolher as variáveis para fazer os estudos, visto que nenhuma delas apresenta correlação forte com a qualidade. Sendo assim, escolhi as melhores, sendo todas de correlação mediana.
+
+A partir desse ponto, foram plotados gráficos para identificar como essas variáveis podem descrever a qualidade de um vinho.
+
+Além dos estudos de correlação das variáveis com a qualidade, também foram analisadas as correlações entre as mais fortes, obtendo a linha de tendência.
+
+Por fim, com todas as análises em mãos, foi feito um resumo sobre a relação entre os fatores observados e a qualidade de vinhos tintos, apresentado em três gráficos.
+
+# Fontes
+
+* Dataset de vinhos - https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
+* Ajustes de legendas de gráficos - http://www.cookbook-r.com/Graphs/Legends_(ggplot2)/#reversing-the-order-of-items-in-the-legend
+* Dicas de markdown - https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
